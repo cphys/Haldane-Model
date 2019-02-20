@@ -5,12 +5,13 @@ from types import SimpleNamespace
 import tinyarray as ta
 import kwant
 import numpy as np
+import scipy
 import holoviews as hv
 
 if tuple(int(i) for i in np.__version__.split('.')[:3]) <= (1, 8, 0):
     raise RuntimeError("numpy >= (1, 8, 0) is required")
 
-__all__ = ['haldaneModel', 'spectrum', 'hamiltonian_array', 'h_k', 'pauli']
+__all__ = ['haldaneModel', 'spectrum', 'hamiltonian_array', 'h_k', 'berryCurvature']
 
 
 def haldaneModel(w = 20, boundary = 'zigzag', pVecs = [(1.0,0.0),(1/2,np.sqrt(3)/2)] , bAtoms = [(0.0,0.0),(0.0,1/np.sqrt(3))]):
@@ -361,3 +362,60 @@ def hamiltonian_array(syst, p=None, k_x=0, k_y=0, k_z=0, return_grid=False):
         return hamiltonians, list(zip(names, values))
     else:
         return hamiltonians
+
+
+
+def berryCurvature(syst, p, ks, num_filled_bands=1):
+    """Berry curvature of a system.
+    
+    Parameters:
+    -----------
+    sys : kwant.Builder
+        A 2D infinite system.
+    p : SimpleNamespace
+        The arguments expected by the system.
+    ks : 1D array-like
+        Values of momentum grid to be used for Berry curvature calculation.
+    num_filled_bands : int
+        The number of filled bands.
+
+    Returns:
+    --------
+    bc : 2D array
+        Berry curvature on each square in a `ks x ks` grid.
+    """
+    # Calculate an array of eigenvectors.
+    B = np.array(syst.symmetry.periods).T
+    A = B @ np.linalg.inv(B.T @ B)
+
+    # Replace translational symmetries by momentum parameters #
+    syst = kwant.wraparound.wraparound(syst).finalized()
+
+    def energy(kx, ky):
+        k = np.array([kx, ky])
+        kx, ky = np.linalg.solve(A, k)
+        H = syst.hamiltonian_submatrix([p, kx, ky], sparse=False)
+        return scipy.linalg.eigh(H)[1]
+
+    # creats vectors allows for limited number of filled bands #    
+    vectors = np.array([[energy(kx, ky)[:, :num_filled_bands] for kx in ks] for ky in ks])
+    
+    # The actual Berry curvature calculation
+    vectors_x = np.roll(vectors, 1, 0)
+    vectors_xy = np.roll(vectors_x, 1, 1)
+    vectors_y = np.roll(vectors, 1, 1)
+
+    shifted_vecs = [vectors, vectors_x, vectors_xy, vectors_y]
+
+    v_shape = vectors.shape
+
+    shifted_vecs = [i.reshape(-1, v_shape[-2], v_shape[-1]) for i in shifted_vecs]
+
+    dets = np.ones(len(shifted_vecs[0]), dtype=complex)
+    for vec, shifted in zip(shifted_vecs, np.roll(shifted_vecs, 1, 0)):
+        dets *= [np.linalg.det(a.T.conj() @ b) for a, b in zip(vec, shifted)]
+    bc = np.angle(dets).reshape(int(np.sqrt(len(dets))), -1)    
+    
+    bc = (bc + np.pi / 2) % (np.pi) - np.pi / 2
+    
+    return bc

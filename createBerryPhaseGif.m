@@ -19,9 +19,8 @@ t2Val = "0.00";
 
 folderName = "muRes" <> ToString[muResolution] <> "_kRes" <> ToString[kResolution] <> "_width" <> ToString[width] <> "_boundary" <> ToString[bound] <> "_t" <> ToString[tVal] <> "_t2" <> ToString[t2Val];
 exportFolder = NotebookDirectory[] <> "data/" <> folderName;
-fileName1 = exportFolder <> "/pos/";
-fileName2 = exportFolder <> "/neg/";
-exportFileName = exportFolder <> "/graphine.gif";
+fileName1 = exportFolder <> "/berry/";
+exportFileName = exportFolder <> "/berryPhase.gif";
 
 (* Adjustable Plot Parameters
     - drange_max/drange_min-> give the min and max range of the imported data
@@ -33,8 +32,8 @@ dRangeXmax = \[Pi];
 dRangeYmax = \[Pi];
 dRangeXmin = -dRangeXmax;
 dRangeYmin = -dRangeYmax;
-plotRangeScales = {0.05, 0.05, 0.05};
-axisLabels = {"\!\(\*SubscriptBox[\(k\), \(x\)]\)", "\!\(\*SubscriptBox[\(k\), \(z\)]\)", "E"};
+plotRangeScales = {0.1, 0.1, -0.05};
+axisLabels = {"\!\(\*SubscriptBox[\(k\), \(x\)]\)","\!\(\*SubscriptBox[\(k\), \(z\)]\)", "E"};
 iSize = 400;
 fontWeight = Normal;
 fontColor = Black;
@@ -92,22 +91,19 @@ data[fileName_] :=
 
 (* Creates an array of Plots which shows the positive and negative eigenvalues of the Imported data
     - Plots are arranged in order based on the numerical values within the filenames. *)
-tableOfPlots = ParallelTable[
-   ListPlot3D[{data[fileName1][[i]], data[fileName2][[i]]},
-    DataRange -> dataRange,
-    PlotRange -> plotRange[{data[fileName1], data[fileName2]}],
-    BoxRatios -> boxRatios,
-    PlotTheme -> "Detailed",
-    PlotLegends -> None,
-    AxesLabel -> axisLabStyle,
-    Ticks -> frameTix,
-    TicksStyle -> Directive[fontColor, fontSize],
-    ViewPoint -> viewPoint,
-    PlotStyle -> plotStyle,
-    ImageSize -> iSize,
-    Mesh -> {meshPoints, meshPoints},
-    PerformanceGoal -> perfGoal],
-   {i, 1, Length[sortedList[fileName1]]}];
+PlotDensity[posNeg_, imu_] := ListDensityPlot[{data[fileName1][[imu]]},
+   DataRange -> dataRange,
+   PlotRange -> {{-\[Pi] - .05*\[Pi], \[Pi] + .05*\[Pi]}, {-\[Pi], \[Pi]}, {posNeg*.01, posNeg*.5}},
+   ColorFunction -> "Rainbow",
+   ColorFunctionScaling -> True,
+   BoxRatios -> boxRatios,
+   PlotTheme -> "Scientific",
+   PlotLegends -> None,
+   FrameLabel -> {axisLabStyle[[1]], axisLabStyle[[2]]},
+   FrameTicks -> {{{-\[Pi], -\[Pi]/2, 0, \[Pi]/2, \[Pi]}, None}, {{-\[Pi], -\[Pi]/2, 0, \[Pi]/2, \[Pi]}, None}},
+   FrameTicksStyle -> Directive[fontColor, fontSize],
+   ImageSize -> iSize,
+   PerformanceGoal -> "Quality"];
 
 (* Exports animated gif or creates animation within notebook based on selections within Plotting Options. *)
 If[exportGif, Export[exportFileName, tableOfPlots]];
