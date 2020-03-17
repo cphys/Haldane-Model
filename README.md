@@ -12,7 +12,9 @@ Also calculates and plots berry phase along with andimated gif.
 
 * Running mathematica program createHaldaneAnimatedGif.m and createBerryPhaseGif.m will read all of the data and output an animated gifs which spans range of chemical potentials
 
-![sample output](berryPhase.gif)
+![](graphine.gif)
+
+![](berryPhase.gif)
 
 ## To Do
 * label changing \mu value on plot
